@@ -1,0 +1,12 @@
+node_modules/
+
+# Environment and secret files
+.env
+.env.*
+server/.env
+client/.env
+
+# Keep sample env files trackable
+!.env.example
+!server/.env.example
+!client/.env.example
