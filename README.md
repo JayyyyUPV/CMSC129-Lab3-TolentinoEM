@@ -1,6 +1,6 @@
-# CMSC129 Lab 3 - Gemini Chatbot for Item CRUD App
+# CMSC129 Lab 3 - Gemini Assistant for Item CRUD App
 
-This project extends the Lab 1 CRUD application with a Gemini-powered inquiry chatbot. Users can manage items on the main page, then ask natural-language questions about the same records through a floating chat widget.
+This project extends the Lab 1 CRUD application with a Gemini-powered assistant. Users can manage items on the main page, then use the floating AI widget to ask questions, summarize records, count categories, compare items, and perform CRUD actions through natural language.
 
 ## Tech Stack
 
@@ -12,29 +12,38 @@ This project extends the Lab 1 CRUD application with a Gemini-powered inquiry ch
 
 ## AI Features
 
-- Floating chatbot widget on the main page
-- Conversational answers based on the current item records in MongoDB
-- Context awareness using the last several chat messages in the current session
+- Floating assistant widget on the main page
+- Inquiry chatbot behavior for summaries, counts, comparisons, and search
+- CRUD assistant behavior for create, update, and delete requests
+- Confirmation flow for update and delete actions before anything is changed
+- Context awareness using the last 10 chat messages in the current session
+- Tool-use style backend flow: Gemini plans an action, the server validates it, and backend functions execute the database operation
+- Automatic main-page refresh after successful chat-based CRUD actions
 - Safe backend proxy for Gemini requests
 - Graceful handling for missing API keys, invalid models, permission issues, and quota errors
 
-## How the Chatbot Works
+## How the Assistant Works
 
 1. The React client sends the user message and recent chat history to the backend.
 2. The backend loads active items from MongoDB.
-3. The backend builds a prompt that includes:
-   - item data
-   - category summary
-   - recent conversation history
-   - the latest user question
-4. Gemini generates a response using only the provided item data.
-5. The response is shown inside the floating chat widget.
+3. Gemini first acts as a planner and decides whether the user wants:
+   - a normal inquiry answer
+   - a create action
+   - an update action
+   - a delete action
+   - a clarification question
+4. For inquiries, Gemini answers using only the provided item data and recent conversation context.
+5. For CRUD requests, the backend validates the planned action and runs a server-side function:
+   - create: inserts a new item
+   - update: asks for confirmation, then updates matching item records
+   - delete: asks for confirmation, then soft deletes matching item records
+6. After a successful chat-based CRUD operation, the main page refreshes so the visible records match the assistant reply.
 
 The AI never calls MongoDB directly from the frontend and the API key is never exposed in the browser.
 
-## Example Queries
+## Example Inquiries
 
-Try these in the chat widget:
+Try these in the assistant widget:
 
 - `What items do I currently have?`
 - `How many categories are represented?`
@@ -42,6 +51,17 @@ Try these in the chat widget:
 - `Show me the items in the School category.`
 - `Which records mention study, office, or work?`
 - `Summarize the Tech items for me.`
+
+## Example CRUD Commands
+
+- `Add a new item called Planner Pad in Office with description Daily schedule notebook.`
+- `Create a School item named Yellow Highlighter.`
+- `Update the Graph Notebook description to Grid pages for math exercises.`
+- `Change the category of Sticky Notes to School.`
+- `Delete the Mini Whiteboard item.`
+- `Remove all Tech items.`
+
+The assistant will ask for confirmation before update and delete actions. Reply with `yes` to continue or `cancel` to stop.
 
 ## Environment Variables
 
@@ -53,6 +73,14 @@ MONGODB_URI=your_mongodb_atlas_connection_string
 GEMINI_API_KEY=your_google_ai_studio_api_key
 GEMINI_MODEL=gemini-2.5-flash
 ```
+
+## Gemini API Key Setup
+
+1. Go to Google AI Studio: `https://aistudio.google.com/`
+2. Sign in with your Google account.
+3. Create or open a project with Gemini API access.
+4. Generate an API key.
+5. Paste that key into `server/.env` as `GEMINI_API_KEY`.
 
 ## Installation
 
@@ -125,7 +153,8 @@ Example request body:
   "history": [
     { "role": "user", "content": "What items do I have?" },
     { "role": "assistant", "content": "You currently have 12 items..." }
-  ]
+  ],
+  "pendingAction": null
 }
 ```
 
@@ -147,6 +176,8 @@ CMSC129-Lab3-TOLENTINOEJ/
 |   |-- scripts/seedItems.js
 |   |-- services/
 |   |   |-- aiService.js
+|   |   |-- assistantService.js
+|   |   |-- functionService.js
 |   |   `-- promptService.js
 |   |-- .env.example
 |   `-- server.js
@@ -155,10 +186,12 @@ CMSC129-Lab3-TOLENTINOEJ/
 
 ## Notes for Demo and Submission
 
-- The chatbot is designed for inquiry-style questions about the current item data.
-- Chat context is maintained for the active browser session through recent message history.
+- The assistant supports both inquiry-style prompts and expanded CRUD commands.
+- Chat context is maintained for the active browser session through the latest 10 messages.
+- Update and delete requests require a confirmation reply before execution.
+- Chat-made CRUD changes are reflected both in the assistant response and on the main page item list.
 - The backend returns user-friendly AI errors instead of exposing raw provider secrets.
-- Add actual chatbot screenshots to this README before final submission.
+- Add actual assistant screenshots to this README before final submission.
 
 ## Scripts
 

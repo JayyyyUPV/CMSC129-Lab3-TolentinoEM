@@ -1,7 +1,6 @@
 const express = require("express");
-const Item = require("../models/Item");
-const { generateResponse } = require("../services/aiService");
-const { buildPrompt } = require("../services/promptService");
+const { handleAssistantMessage } = require("../services/assistantService");
+const { sanitizePendingAction } = require("../services/functionService");
 
 const router = express.Router();
 
@@ -27,29 +26,30 @@ function normalizeHistory(history) {
 
 router.post("/", async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, pendingAction } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ error: "Message is required" });
     }
 
     const safeHistory = normalizeHistory(history);
-    const items = await Item.find({ deleted: false })
-      .sort({ createdAt: 1 })
-      .lean();
-    const prompt = buildPrompt({
-      message,
-      items,
-      history: safeHistory,
-    });
+    const safePendingAction = sanitizePendingAction(pendingAction);
 
     console.log("Incoming message:", message.trim());
 
-    const reply = await generateResponse(prompt);
+    const result = await handleAssistantMessage({
+      message,
+      history: safeHistory,
+      pendingAction: safePendingAction,
+    });
 
-    console.log("AI reply:", reply);
+    console.log("AI reply:", result.reply);
 
-    res.json({ reply });
+    res.json({
+      reply: result.reply,
+      pendingAction: result.pendingAction || null,
+      dataChanged: Boolean(result.dataChanged),
+    });
   } catch (err) {
     console.error("FULL ERROR:");
     console.error(err);

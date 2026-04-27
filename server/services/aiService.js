@@ -47,7 +47,50 @@ function buildAiError(error) {
   return wrappedError;
 }
 
-async function generateResponse(prompt) {
+function buildRequest(prompt, responseMimeType) {
+  const request =
+    typeof prompt === "string"
+      ? {
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+        }
+      : { ...prompt };
+
+  if (responseMimeType) {
+    request.generationConfig = {
+      ...(request.generationConfig || {}),
+      responseMimeType,
+    };
+  }
+
+  return request;
+}
+
+function parseJsonResponse(text) {
+  try {
+    return JSON.parse(text);
+  } catch (directError) {
+    const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch (nestedError) {
+        // Fall through to the explicit invalid JSON error below.
+      }
+    }
+  }
+
+  const error = new Error("Model did not return valid JSON.");
+  error.code = "INVALID_JSON_RESPONSE";
+  throw error;
+}
+
+async function runModel(prompt, options = {}) {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error("GEMINI_API_KEY is missing");
     error.statusCode = 500;
@@ -60,14 +103,32 @@ async function generateResponse(prompt) {
     const model = genAI.getGenerativeModel({
       model: DEFAULT_MODEL,
     });
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(
+      buildRequest(prompt, options.responseMimeType)
+    );
     const response = await result.response;
-    const text = response.text().trim();
-
-    return text || "I could not find a useful answer from the current item data.";
+    return response.text().trim();
   } catch (error) {
+    if (error.code === "INVALID_JSON_RESPONSE") {
+      throw error;
+    }
+
     throw buildAiError(error);
   }
 }
 
-module.exports = { generateResponse };
+async function generateResponse(prompt) {
+  const text = await runModel(prompt);
+
+  return text || "I could not find a useful answer from the current item data.";
+}
+
+async function generateJsonResponse(prompt) {
+  const text = await runModel(prompt, {
+    responseMimeType: "application/json",
+  });
+
+  return parseJsonResponse(text);
+}
+
+module.exports = { generateJsonResponse, generateResponse };

@@ -283,7 +283,7 @@ function App() {
         </section>
       </main>
 
-      <ChatWidget />
+      <ChatWidget onItemsChanged={fetchItems} />
     </div>
   );
 }

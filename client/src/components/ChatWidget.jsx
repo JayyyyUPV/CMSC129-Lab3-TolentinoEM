@@ -5,23 +5,25 @@ const STARTER_MESSAGES = [
   {
     role: "assistant",
     content:
-      "Hi! I can answer questions about the items in this app. Ask me to list items, count categories, find the newest entry, or search by keyword.",
+      'Hi! I can answer questions about your items and also create, update, or delete them through chat. For update and delete requests, I will always ask for a "yes" confirmation first.',
   },
 ];
 
 const SUGGESTED_QUERIES = [
   "What items do I currently have?",
   "How many categories are there?",
-  "Which item was added first?",
-  "Show items related to study or office work.",
+  "Add a new item called Planner Pad in Office with description Daily schedule notebook.",
+  "Update the Graph Notebook description to Grid pages for math exercises.",
+  "Delete the Mini Whiteboard item.",
 ];
 
-function ChatWidget() {
+function ChatWidget({ onItemsChanged }) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(STARTER_MESSAGES);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingAction, setPendingAction] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -49,15 +51,21 @@ function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const reply = await sendChatMessage({
+      const response = await sendChatMessage({
         message: trimmedMessage,
         history,
+        pendingAction,
       });
 
       setMessages((currentMessages) => [
         ...currentMessages,
-        { role: "assistant", content: reply },
+        { role: "assistant", content: response.reply },
       ]);
+      setPendingAction(response.pendingAction || null);
+
+      if (response.dataChanged && onItemsChanged) {
+        await onItemsChanged();
+      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -73,19 +81,19 @@ function ChatWidget() {
   return (
     <div className={`chat-widget ${isOpen ? "chat-widget--open" : ""}`}>
       {isOpen ? (
-        <section className="chat-panel" aria-label="Item chatbot">
+        <section className="chat-panel" aria-label="Item assistant">
           <div className="chat-panel__header">
             <div>
-              <p className="chat-panel__eyebrow">Gemini Chatbot</p>
-              <h2>Ask about your items</h2>
+              <p className="chat-panel__eyebrow">Gemini Assistant</p>
+              <h2>Ask, create, update, or delete</h2>
             </div>
             <button
               type="button"
               className="chat-panel__close"
               onClick={() => setIsOpen(false)}
-              aria-label="Close chatbot"
+              aria-label="Close assistant"
             >
-              ×
+              x
             </button>
           </div>
 
@@ -120,7 +128,7 @@ function ChatWidget() {
               {isLoading ? (
                 <article className="chat-bubble chat-bubble--assistant">
                   <span className="chat-bubble__role">AI</span>
-                  <p>Thinking through your item data...</p>
+                  <p>Thinking through your item data and available actions...</p>
                 </article>
               ) : null}
 
@@ -130,17 +138,23 @@ function ChatWidget() {
 
           <form className="chat-panel__form" onSubmit={handleSubmit}>
             {error ? <p className="chat-error">{error}</p> : null}
+            {pendingAction ? (
+              <p className="chat-error">
+                Pending {pendingAction.type} request. Reply "yes" to continue or
+                "cancel" to stop.
+              </p>
+            ) : null}
 
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask about your current items..."
+              placeholder="Ask about items or request a CRUD action..."
               rows={3}
               disabled={isLoading}
             />
 
             <div className="chat-panel__actions">
-              <span>Context is kept for the current session.</span>
+              <span>Context stays in this session, including pending confirmations.</span>
               <button type="submit" disabled={isLoading || !input.trim()}>
                 Send
               </button>
@@ -154,7 +168,7 @@ function ChatWidget() {
         className="chat-toggle"
         onClick={() => setIsOpen((open) => !open)}
       >
-        {isOpen ? "Hide chat" : "Open AI chat"}
+        {isOpen ? "Hide assistant" : "Open AI assistant"}
       </button>
     </div>
   );

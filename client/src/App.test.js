@@ -11,6 +11,9 @@ test("renders the lab 3 hero copy", async () => {
   expect(screen.getByText(/cmsc 129 laboratory 3/i)).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: /ej store/i })).toBeInTheDocument();
   expect(
+    screen.getByRole("button", { name: /open ai assistant/i })
+  ).toBeInTheDocument();
+  expect(
     screen.getByText(
       /manage store records on the page, then ask the floating chatbot to summarize, count, compare, or search them using natural language/i
     )
