@@ -10,11 +10,26 @@ const STARTER_MESSAGES = [
 ];
 
 const SUGGESTED_QUERIES = [
-  "What items do I currently have?",
-  "How many categories are there?",
-  "Add a new item called Planner Pad in Office with description Daily schedule notebook.",
-  "Update the Graph Notebook description to Grid pages for math exercises.",
-  "Delete the Mini Whiteboard item.",
+  {
+    label: "Current items",
+    prompt: "What items do I currently have?",
+  },
+  {
+    label: "Count categories",
+    prompt: "How many categories are there?",
+  },
+  {
+    label: "Add Planner Pad",
+    prompt: "Add a new item called Planner Pad in Office with description Daily schedule notebook.",
+  },
+  {
+    label: "Update Graph Notebook",
+    prompt: "Update the Graph Notebook description to Grid pages for math exercises.",
+  },
+  {
+    label: "Delete Mini Whiteboard",
+    prompt: "Delete the Mini Whiteboard item.",
+  },
 ];
 
 function ChatWidget({ onItemsChanged }) {
@@ -101,13 +116,13 @@ function ChatWidget({ onItemsChanged }) {
             <div className="chat-suggestions">
               {SUGGESTED_QUERIES.map((query) => (
                 <button
-                  key={query}
+                  key={query.label}
                   type="button"
                   className="chat-suggestion"
-                  onClick={() => handleSend(query)}
+                  onClick={() => handleSend(query.prompt)}
                   disabled={isLoading}
                 >
-                  {query}
+                  {query.label}
                 </button>
               ))}
             </div>
@@ -126,9 +141,20 @@ function ChatWidget({ onItemsChanged }) {
               ))}
 
               {isLoading ? (
-                <article className="chat-bubble chat-bubble--assistant">
+                <article className="chat-bubble chat-bubble--assistant chat-bubble--loading">
                   <span className="chat-bubble__role">AI</span>
-                  <p>Thinking through your item data and available actions...</p>
+                  <div
+                    className="chat-loading"
+                    aria-live="polite"
+                    aria-label="AI is thinking"
+                  >
+                    <span className="chat-loading__text">Thinking</span>
+                    <span className="chat-loading__dots" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
                 </article>
               ) : null}
 
@@ -154,7 +180,7 @@ function ChatWidget({ onItemsChanged }) {
             />
 
             <div className="chat-panel__actions">
-              <span>Context stays in this session, including pending confirmations.</span>
+              <span>Session keeps context and pending confirmations.</span>
               <button type="submit" disabled={isLoading || !input.trim()}>
                 Send
               </button>
@@ -163,13 +189,15 @@ function ChatWidget({ onItemsChanged }) {
         </section>
       ) : null}
 
-      <button
-        type="button"
-        className="chat-toggle"
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        {isOpen ? "Hide assistant" : "Open AI assistant"}
-      </button>
+      {!isOpen ? (
+        <button
+          type="button"
+          className="chat-toggle"
+          onClick={() => setIsOpen(true)}
+        >
+          Open AI assistant
+        </button>
+      ) : null}
     </div>
   );
 }

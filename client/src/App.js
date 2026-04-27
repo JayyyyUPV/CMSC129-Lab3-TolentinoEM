@@ -4,6 +4,7 @@ import ChatWidget from "./components/ChatWidget";
 import "./App.css";
 
 const API_URL = "http://localhost:5000/api/items";
+const ITEMS_PER_PAGE = 6;
 
 function formatDate(dateValue) {
   if (!dateValue) {
@@ -17,6 +18,25 @@ function formatDate(dateValue) {
   });
 }
 
+function getCategorySuggestion(inputValue, categories) {
+  if (!inputValue.trim()) {
+    return "";
+  }
+
+  const normalizedInput = inputValue.toLowerCase();
+
+  return (
+    categories.find((categoryOption) => {
+      const normalizedCategory = categoryOption.toLowerCase();
+
+      return (
+        normalizedCategory.startsWith(normalizedInput) &&
+        normalizedCategory !== normalizedInput
+      );
+    }) || ""
+  );
+}
+
 function App() {
   const [items, setItems] = useState([]);
   const [name, setName] = useState("");
@@ -26,6 +46,7 @@ function App() {
   const [formError, setFormError] = useState("");
   const [pageError, setPageError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchItems = async () => {
     try {
@@ -41,6 +62,11 @@ function App() {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [items.length]);
 
   const resetForm = () => {
     setName("");
@@ -101,8 +127,22 @@ function App() {
   };
 
   const uniqueCategories = [...new Set(items.map((item) => item.category || "General"))];
+  const sortedCategories = [...uniqueCategories].sort((left, right) =>
+    left.localeCompare(right)
+  );
+  const categorySuggestion = getCategorySuggestion(category, sortedCategories);
   const oldestItem = items[0];
   const newestItem = items[items.length - 1];
+  const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+  const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = items.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+
+  const handleCategoryKeyDown = (event) => {
+    if (event.key === "Tab" && categorySuggestion) {
+      event.preventDefault();
+      setCategory(categorySuggestion);
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -162,12 +202,23 @@ function App() {
 
               <label>
                 <span>Category</span>
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                  placeholder="Example: School"
-                />
+                <div className="autocomplete-field">
+                  {categorySuggestion ? (
+                    <div className="autocomplete-field__suggestion" aria-hidden="true">
+                      <span className="autocomplete-field__typed">{category}</span>
+                      <span>{categorySuggestion.slice(category.length)}</span>
+                    </div>
+                  ) : null}
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                    onKeyDown={handleCategoryKeyDown}
+                    placeholder="Example: School"
+                    autoComplete="off"
+                    className="autocomplete-field__input"
+                  />
+                </div>
               </label>
 
               <label>
@@ -246,7 +297,7 @@ function App() {
             </div>
           ) : (
             <div className="item-list">
-              {items.map((item) => (
+              {paginatedItems.map((item) => (
                 <article key={item._id} className="item-row">
                   <div className="item-row__main">
                     <div className="item-row__title">
@@ -280,6 +331,32 @@ function App() {
               ))}
             </div>
           )}
+
+          {items.length > ITEMS_PER_PAGE ? (
+            <div className="pagination">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
         </section>
       </main>
 

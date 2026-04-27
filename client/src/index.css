@@ -1,11 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap");
 
 :root {
-  --ink-900: #193042;
-  --ink-800: #284357;
-  --ink-700: #466177;
-  --ink-600: #667d92;
-  --accent-700: #ab5f15;
+  --brand-red: #dc3a31;
+  --brand-red-strong: #bf2720;
+  --brand-red-deep: #891b17;
+  --brand-red-soft: #ffe9e6;
+  --surface-white: #fffdfc;
+  --surface-soft: #fff4f1;
+  --line-soft: rgba(191, 39, 32, 0.2);
+  --line-strong: rgba(191, 39, 32, 0.32);
+  --shadow-red: rgba(114, 23, 19, 0.22);
+  --ink-900: #781b18;
+  --ink-800: #912d28;
+  --ink-700: #ab4b45;
+  --ink-600: #cb7772;
+  --accent-700: #ffd1cc;
 }
 
 * {
@@ -22,7 +31,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--ink-900);
-  background: #edf2f7;
+  background: linear-gradient(180deg, #e66f65 0%, #f1b2ab 100%);
 }
 
 button,
