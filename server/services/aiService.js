@@ -1,13 +1,23 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const DEFAULT_BACKUP_MODELS = [
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview",
+  "gemini-2.5-flash-lite",
+  "gemma-3-1b-it",
+];
 
-function buildAiError(error) {
+function buildAiError(error, context = {}) {
   const message = error?.message || "Unknown AI error";
   const wrappedError = new Error(message);
+  const attemptedModels = Array.isArray(context.attemptedModels)
+    ? context.attemptedModels.filter(Boolean)
+    : [];
 
   wrappedError.statusCode = 500;
   wrappedError.publicMessage = "AI failed";
+  wrappedError.attemptedModels = attemptedModels;
 
   if (
     message.includes("403") ||
@@ -33,6 +43,23 @@ function buildAiError(error) {
     return wrappedError;
   }
 
+  if (
+    message.includes("503") ||
+    message.includes("Service Unavailable") ||
+    message.includes("high demand")
+  ) {
+    wrappedError.statusCode = 503;
+    wrappedError.publicMessage =
+      "Gemini is temporarily under heavy load right now. Please try again in a moment.";
+
+    const retryMatch = message.match(/retry in ([\d.]+)s/i);
+    if (retryMatch) {
+      wrappedError.retryAfterSeconds = Math.ceil(Number(retryMatch[1]));
+    }
+
+    return wrappedError;
+  }
+
   if (message.includes("429") || message.includes("Quota exceeded")) {
     wrappedError.statusCode = 429;
     wrappedError.publicMessage =
@@ -45,6 +72,42 @@ function buildAiError(error) {
   }
 
   return wrappedError;
+}
+
+function parseBackupModels(value) {
+  if (!value || typeof value !== "string") {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+}
+
+function getModelFallbackChain() {
+  const configuredBackupModels = parseBackupModels(process.env.GEMINI_BACKUP_MODELS);
+  const backupModels =
+    configuredBackupModels.length > 0 ? configuredBackupModels : DEFAULT_BACKUP_MODELS;
+
+  return [...new Set([DEFAULT_MODEL, ...backupModels].filter(Boolean))];
+}
+
+function shouldTryFallback(error) {
+  const message = error?.message || "";
+
+  return (
+    message.includes("429") ||
+    message.includes("Quota exceeded") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("503") ||
+    message.includes("Service Unavailable") ||
+    message.includes("high demand") ||
+    message.includes("UNAVAILABLE") ||
+    message.includes("fetch failed") ||
+    message.includes("EAI_AGAIN") ||
+    message.includes("ETIMEDOUT")
+  );
 }
 
 function buildRequest(prompt, responseMimeType) {
@@ -98,23 +161,49 @@ async function runModel(prompt, options = {}) {
     throw error;
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: DEFAULT_MODEL,
-    });
-    const result = await model.generateContent(
-      buildRequest(prompt, options.responseMimeType)
-    );
-    const response = await result.response;
-    return response.text().trim();
-  } catch (error) {
-    if (error.code === "INVALID_JSON_RESPONSE") {
-      throw error;
-    }
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const modelChain = getModelFallbackChain();
+  const attemptedModels = [];
+  let lastError = null;
 
-    throw buildAiError(error);
+  for (const modelName of modelChain) {
+    attemptedModels.push(modelName);
+
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+      });
+      const result = await model.generateContent(
+        buildRequest(prompt, options.responseMimeType)
+      );
+      const response = await result.response;
+      const text = response.text().trim();
+
+      if (attemptedModels.length > 1) {
+        console.warn(
+          `Primary Gemini model failed. Recovered using backup model: ${modelName}`
+        );
+      }
+
+      return text;
+    } catch (error) {
+      lastError = error;
+
+      if (error.code === "INVALID_JSON_RESPONSE") {
+        throw error;
+      }
+
+      if (!shouldTryFallback(error) || modelName === modelChain[modelChain.length - 1]) {
+        throw buildAiError(error, { attemptedModels });
+      }
+
+      console.warn(
+        `Gemini model ${modelName} failed with a retryable error. Trying next backup model.`
+      );
+    }
   }
+
+  throw buildAiError(lastError, { attemptedModels });
 }
 
 async function generateResponse(prompt) {

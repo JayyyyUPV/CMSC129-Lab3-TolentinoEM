@@ -72,6 +72,7 @@ PORT=5000
 MONGODB_URI=your_mongodb_atlas_connection_string
 GEMINI_API_KEY=your_google_ai_studio_api_key
 GEMINI_MODEL=gemini-2.5-flash
+GEMINI_BACKUP_MODELS=gemini-3-flash-preview,gemini-3.1-flash-lite-preview,gemini-2.5-flash-lite,gemma-3-1b-it
 ```
 
 ## Gemini API Key Setup
@@ -81,6 +82,17 @@ GEMINI_MODEL=gemini-2.5-flash
 3. Create or open a project with Gemini API access.
 4. Generate an API key.
 5. Paste that key into `server/.env` as `GEMINI_API_KEY`.
+
+## Model Fallbacks
+
+If the primary Gemini model is unavailable because of quota pressure or temporary service overload, the backend automatically tries these backups in order:
+
+- `gemini-3-flash-preview`
+- `gemini-3.1-flash-lite-preview`
+- `gemini-2.5-flash-lite`
+- `gemma-3-1b-it`
+
+You can change that order with `GEMINI_BACKUP_MODELS` in `server/.env`.
 
 ## Installation
 
