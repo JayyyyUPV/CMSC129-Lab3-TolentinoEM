@@ -9,7 +9,9 @@ test("renders the lab 3 hero copy", async () => {
   render(<App />);
 
   expect(screen.getByText(/cmsc 129 laboratory 3/i)).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: /ej store/i })).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: /provincial book store/i })
+  ).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: /open ai assistant/i })
   ).toBeInTheDocument();

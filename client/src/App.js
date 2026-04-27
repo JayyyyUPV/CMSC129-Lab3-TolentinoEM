@@ -111,7 +111,7 @@ function App() {
           <p className="hero-panel__eyebrow">CMSC 129 Laboratory 3</p>
           <div className="hero-panel__content">
             <div className="hero-panel__copy">
-              <h1>EJ Store</h1>
+              <h1>Provincial Book Store</h1>
               <p>
                 Manage store records on the page, then ask the floating chatbot
                 to summarize, count, compare, or search them using natural language.
