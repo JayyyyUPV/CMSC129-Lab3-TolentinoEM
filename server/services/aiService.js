@@ -1,12 +1,23 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const DEFAULT_PLANNER_MODEL =
+  process.env.GEMINI_PLANNER_MODEL || "gemini-2.5-flash-lite";
 const DEFAULT_BACKUP_MODELS = [
   "gemini-3-flash-preview",
   "gemini-3.1-flash-lite-preview",
   "gemini-2.5-flash-lite",
   "gemma-3-1b-it",
 ];
+let genAIClient = null;
+
+function getGenAIClient() {
+  if (!genAIClient) {
+    genAIClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+
+  return genAIClient;
+}
 
 function buildAiError(error, context = {}) {
   const message = error?.message || "Unknown AI error";
@@ -14,6 +25,7 @@ function buildAiError(error, context = {}) {
   const attemptedModels = Array.isArray(context.attemptedModels)
     ? context.attemptedModels.filter(Boolean)
     : [];
+  const primaryModel = context.primaryModel || DEFAULT_MODEL;
 
   wrappedError.statusCode = 500;
   wrappedError.publicMessage = "AI failed";
@@ -39,7 +51,7 @@ function buildAiError(error, context = {}) {
   ) {
     wrappedError.statusCode = 404;
     wrappedError.publicMessage =
-      `Gemini model "${DEFAULT_MODEL}" is not available for generateContent. Use a currently supported model or list available models for this API key.`;
+      `Gemini model "${primaryModel}" is not available for generateContent. Use a currently supported model or list available models for this API key.`;
     return wrappedError;
   }
 
@@ -85,12 +97,12 @@ function parseBackupModels(value) {
     .filter(Boolean);
 }
 
-function getModelFallbackChain() {
+function getModelFallbackChain(preferredModel = DEFAULT_MODEL) {
   const configuredBackupModels = parseBackupModels(process.env.GEMINI_BACKUP_MODELS);
   const backupModels =
     configuredBackupModels.length > 0 ? configuredBackupModels : DEFAULT_BACKUP_MODELS;
 
-  return [...new Set([DEFAULT_MODEL, ...backupModels].filter(Boolean))];
+  return [...new Set([preferredModel, DEFAULT_MODEL, ...backupModels].filter(Boolean))];
 }
 
 function shouldTryFallback(error) {
@@ -161,8 +173,9 @@ async function runModel(prompt, options = {}) {
     throw error;
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const modelChain = getModelFallbackChain();
+  const genAI = getGenAIClient();
+  const primaryModel = options.preferredModel || DEFAULT_MODEL;
+  const modelChain = getModelFallbackChain(primaryModel);
   const attemptedModels = [];
   let lastError = null;
 
@@ -194,7 +207,7 @@ async function runModel(prompt, options = {}) {
       }
 
       if (!shouldTryFallback(error) || modelName === modelChain[modelChain.length - 1]) {
-        throw buildAiError(error, { attemptedModels });
+        throw buildAiError(error, { attemptedModels, primaryModel });
       }
 
       console.warn(
@@ -203,7 +216,7 @@ async function runModel(prompt, options = {}) {
     }
   }
 
-  throw buildAiError(lastError, { attemptedModels });
+  throw buildAiError(lastError, { attemptedModels, primaryModel });
 }
 
 async function generateResponse(prompt) {
@@ -214,6 +227,7 @@ async function generateResponse(prompt) {
 
 async function generateJsonResponse(prompt) {
   const text = await runModel(prompt, {
+    preferredModel: DEFAULT_PLANNER_MODEL,
     responseMimeType: "application/json",
   });
 

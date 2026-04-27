@@ -1,3 +1,9 @@
+function compactText(value, fallback) {
+  const text =
+    typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  return text || fallback;
+}
+
 function formatItem(item) {
   const createdAt = item.createdAt
     ? new Date(item.createdAt).toISOString()
@@ -6,14 +12,29 @@ function formatItem(item) {
     ? new Date(item.updatedAt).toISOString()
     : "unknown";
 
-  return [
-    `- ID: ${item._id}`,
-    `  Name: ${item.name}`,
-    `  Category: ${item.category || "General"}`,
-    `  Description: ${item.description || "No description provided."}`,
-    `  Created At: ${createdAt}`,
-    `  Updated At: ${updatedAt}`,
-  ].join("\n");
+  return `- id=${item._id} | name=${compactText(
+    item.name,
+    "Unnamed item"
+  )} | category=${compactText(
+    item.category,
+    "General"
+  )} | description=${compactText(
+    item.description,
+    "No description provided."
+  )} | createdAt=${createdAt} | updatedAt=${updatedAt}`;
+}
+
+function formatPlanningItem(item) {
+  return `- id=${item._id} | name=${compactText(
+    item.name,
+    "Unnamed item"
+  )} | category=${compactText(
+    item.category,
+    "General"
+  )} | description=${compactText(
+    item.description,
+    "No description provided."
+  )}`;
 }
 
 function buildCategorySummary(items) {
@@ -40,7 +61,7 @@ function buildConversationHistory(history) {
   return history
     .map(
       (entry, index) =>
-        `${index + 1}. ${entry.role.toUpperCase()}: ${entry.content.trim()}`
+        `${index + 1}. ${entry.role}: ${entry.content.trim()}`
     )
     .join("\n");
 }
@@ -48,7 +69,7 @@ function buildConversationHistory(history) {
 function buildPrompt({ message, items, history }) {
   const itemList =
     items.length > 0
-      ? items.map((item) => formatItem(item)).join("\n\n")
+      ? items.map((item) => formatItem(item)).join("\n")
       : "No active items are currently stored in the database.";
 
   return `
@@ -89,7 +110,7 @@ Answer the user's latest question based on the application data.
 function buildAssistantPlanningPrompt({ message, items, history }) {
   const itemList =
     items.length > 0
-      ? items.map((item) => formatItem(item)).join("\n\n")
+      ? items.map((item) => formatPlanningItem(item)).join("\n")
       : "No active items are currently stored in the database.";
 
   return `
