@@ -5,7 +5,7 @@ const Item = require("../models/Item");
 // GET all non-deleted items
 router.get("/", async (req, res) => {
   try {
-    const items = await Item.find({ deleted: false });
+    const items = await Item.find({ deleted: false }).sort({ createdAt: 1 });
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,6 +31,7 @@ router.post("/", async (req, res) => {
     const newItem = new Item({
       name: req.body.name,
       description: req.body.description,
+      category: req.body.category || "General",
     });
 
     const savedItem = await newItem.save();
@@ -48,6 +49,7 @@ router.put("/:id", async (req, res) => {
       {
         name: req.body.name,
         description: req.body.description,
+        category: req.body.category || "General",
       },
       { new: true }
     );

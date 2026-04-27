@@ -1,8 +1,16 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from "@testing-library/react";
+import axios from "axios";
+import App from "./App";
 
-test('renders learn react link', () => {
+jest.mock("axios");
+
+test("renders the lab 3 heading", async () => {
+  axios.get.mockResolvedValue({ data: [] });
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+  const heading = screen.getByText(/crud tracker with a gemini-powered item chatbot/i);
+  expect(heading).toBeInTheDocument();
+
+  const emptyState = await screen.findByText(/no items yet/i);
+  expect(emptyState).toBeInTheDocument();
 });
