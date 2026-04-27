@@ -4,12 +4,17 @@ import App from "./App";
 
 jest.mock("axios");
 
-test("renders the lab 3 heading", async () => {
+test("renders the lab 3 hero copy", async () => {
   axios.get.mockResolvedValue({ data: [] });
   render(<App />);
 
-  const heading = screen.getByText(/crud tracker with a gemini-powered item chatbot/i);
-  expect(heading).toBeInTheDocument();
+  expect(screen.getByText(/cmsc 129 laboratory 3/i)).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /ej store/i })).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /manage store records on the page, then ask the floating chatbot to summarize, count, compare, or search them using natural language/i
+    )
+  ).toBeInTheDocument();
 
   const emptyState = await screen.findByText(/no items yet/i);
   expect(emptyState).toBeInTheDocument();
