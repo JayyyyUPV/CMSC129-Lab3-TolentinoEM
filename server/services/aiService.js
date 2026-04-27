@@ -8,6 +8,7 @@ const DEFAULT_BACKUP_MODELS = [
   "gemini-3.1-flash-lite-preview",
   "gemini-2.5-flash-lite",
   "gemma-3-1b-it",
+  "gemini-1.5-flash",
 ];
 let genAIClient = null;
 
