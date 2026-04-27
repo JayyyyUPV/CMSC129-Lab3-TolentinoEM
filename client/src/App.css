@@ -38,6 +38,11 @@
   text-transform: uppercase;
 }
 
+.hero-panel__eyebrow {
+  margin: 0 auto 10px;
+  text-align: center;
+}
+
 .hero-panel__content {
   display: flex;
   justify-content: center;
@@ -57,7 +62,7 @@
   text-align: center;
 }
 
-.hero-panel p {
+.hero-panel__copy > p {
   margin: 14px 0 0;
   max-width: 48ch;
   color: var(--ink-700);
@@ -69,6 +74,9 @@
 .hero-panel__copy {
   width: min(920px, 100%);
   margin: 0 auto;
+  display: grid;
+  justify-items: center;
+  text-align: center;
 }
 
 .hero-stats {
