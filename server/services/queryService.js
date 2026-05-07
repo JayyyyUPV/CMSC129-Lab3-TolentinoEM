@@ -4,6 +4,18 @@ function normalizeText(value) {
     : "";
 }
 
+function isTotalItemCountQuestion(message) {
+  const normalizedMessage = normalizeText(message).replace(/[?.!]+$/g, "");
+
+  return [
+    /^(?:how many|count)\s+(?:active\s+)?(?:items?|records?)\s+(?:do i have|are there)(?:\s+(?:right now|currently|in total))?$/,
+    /^(?:how many|count)\s+(?:of\s+)?(?:the\s+)?(?:active\s+)?(?:items?|records?)(?:\s+(?:do i have|are there))?(?:\s+(?:right now|currently|in total))?$/,
+    /^(?:what is|what's)\s+the\s+total\s+(?:item|record)\s+count$/,
+    /^(?:what is|what's)\s+the\s+total\s+number\s+of\s+(?:active\s+)?(?:items?|records?)$/,
+    /^item\s+count$/,
+  ].some((pattern) => pattern.test(normalizedMessage));
+}
+
 function formatDate(value) {
   return value ? new Date(value).toLocaleString("en-US") : "unknown date";
 }
@@ -192,6 +204,16 @@ function buildCategoryItemsResponse(items, category) {
   ].join("\n");
 }
 
+function buildCategoryItemCountResponse(items, category) {
+  const matchedItems = items.filter(
+    (item) => normalizeText(item.category || "General") === normalizeText(category)
+  );
+
+  return `There ${matchedItems.length === 1 ? "is" : "are"} ${matchedItems.length} ${
+    matchedItems.length === 1 ? "item" : "items"
+  } in the ${category} category right now.`;
+}
+
 function buildSearchResponse(items, terms) {
   const matchedItems = items.filter((item) => {
     const haystack = normalizeText(
@@ -232,7 +254,7 @@ function buildDirectAnswer({ message, items }) {
     return buildCategoryCountResponse(items);
   }
 
-  if (/\b(how many|count)\b.*\b(items?|records?)\b/i.test(normalizedMessage)) {
+  if (isTotalItemCountQuestion(message)) {
     return buildItemCountResponse(items);
   }
 
@@ -257,6 +279,10 @@ function buildDirectAnswer({ message, items }) {
   }
 
   const matchedCategory = findMentionedCategory(message, items);
+
+  if (matchedCategory && /\b(how many|count)\b/i.test(normalizedMessage)) {
+    return buildCategoryItemCountResponse(items, matchedCategory);
+  }
 
   if (
     matchedCategory &&
